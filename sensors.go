@@ -3,8 +3,10 @@ package gosensors
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -12,10 +14,11 @@ import (
 // Content field contains string output.
 // Chips field contains map[string]Entries.
 // Example (JSON style):
-// "coretemp-isa-0000": {
-//	"CPU": "+60.0°C",
-//	"GPU": "+48.0°C",
-// }
+//
+//	"coretemp-isa-0000": {
+//		"CPU": "+60.0°C",
+//		"GPU": "+48.0°C",
+//	}
 type Sensors struct {
 	Content string             `json:"-"`
 	Chips   map[string]Entries `json:"chips"`
@@ -25,26 +28,58 @@ type Sensors struct {
 // Example (JSON style):
 // "GPU": "+56.0°C"
 // "CPU": "+68.0°C"
-type Entries map[string]string
+type Entries map[string]float64
+
+func parseTemperatureValue(line string) (string, float64) {
+
+	parts := strings.Split(line, ":")
+	value := strings.TrimRight(strings.TrimLeft(parts[1], " "), " ")
+	temp_value := strings.Split(value, "°C")
+	float_temp, _ := strconv.ParseFloat(temp_value[0], 32)
+	return parts[0], float_temp
+
+}
 
 func construct(content string) *Sensors {
 	s := &Sensors{}
 	s.Content = content
 	s.Chips = map[string]Entries{}
+	parse_adpater := false
 
 	lines := strings.Split(s.Content, "\n")
 
 	var chip string
 	for _, line := range lines {
 		if len(line) > 0 {
-			if !strings.Contains(line, ":") {
+			if !(strings.Contains(line, ":") || strings.Contains(line, "crit") || parse_adpater) {
+				// Parse Chip
+				fmt.Print()
 				chip = line
 				s.Chips[chip] = Entries{}
+				parse_adpater = true
+			} else if parse_adpater {
+				parse_adpater = false
+
 			} else if len(chip) > 0 {
-				parts := strings.Split(line, ":")
-				entry := parts[0]
-				value := strings.TrimRight(strings.TrimLeft(parts[1], " "), " ")
-				s.Chips[chip][entry] = value
+				if strings.Contains(line, ":") && strings.Contains(line, "(") {
+					// Sensor with threshold
+					parts := strings.Split(line, ":")
+					entry := parts[0]
+					value := strings.TrimRight(strings.TrimLeft(parts[1], " "), " ")
+					temp_value := strings.Split(value, "°C")
+					float_temp, _ := strconv.ParseFloat(temp_value[0], 32)
+					s.Chips[chip][entry] = float_temp
+					// fmt.Println(line)
+				} else if strings.Contains(line, ":") {
+					// Sensor without threshold
+					parts := strings.Split(line, ":")
+					entry := parts[0]
+					value := strings.TrimRight(strings.TrimLeft(parts[1], " "), " ")
+					temp_value := strings.Split(value, "°C")
+					float_temp, _ := strconv.ParseFloat(temp_value[0], 32)
+					s.Chips[chip][entry] = float_temp
+				} else {
+				}
 			}
 		}
 	}
