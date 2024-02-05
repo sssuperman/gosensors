@@ -67,7 +67,7 @@ func construct(content string) *Sensors {
 					entry := parts[0]
 					value := strings.TrimRight(strings.TrimLeft(parts[1], " "), " ")
 					temp_value := strings.Split(value, " C")
-					float_temp, _ := strconv.ParseFloat(temp_value[0], 32)
+					float_temp, _ := strconv.ParseFloat(temp_value[0], 64)
 					s.Chips[chip][entry] = float_temp
 					// fmt.Println(line)
 				} else if strings.Contains(line, ":") {
@@ -76,7 +76,7 @@ func construct(content string) *Sensors {
 					entry := parts[0]
 					value := strings.TrimRight(strings.TrimLeft(parts[1], " "), " ")
 					temp_value := strings.Split(value, "°C")
-					float_temp, _ := strconv.ParseFloat(temp_value[0], 32)
+					float_temp, _ := strconv.ParseFloat(temp_value[0], 64)
 					s.Chips[chip][entry] = float_temp
 				} else {
 				}
